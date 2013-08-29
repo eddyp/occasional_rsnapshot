@@ -12,7 +12,7 @@ This is the motivation for this project.
 Usage
 -----
 
-occasional_rsnapshot /path/to/rsnapshot.conf
+    occasional_rsnapshot /path/to/rsnapshot.conf
 
 The script tries to find the snapshot_root based on the
 information in the configuration file, then, if found, it
@@ -21,6 +21,19 @@ necessary since the last time the backup was made.
 
 If the script does not find the snapshot_root, it will
 terminate silently, since it assumes the drive is not
+connected.
+
+Run via cron
+------------
+
+Copy the script to an appropriate place and add a line
+simillar to this to your crontab for automatic running:
+
+    */5 *   *   *  *    /home/eddy/bin/occasional_rsnapshot /home/eddy/etc/rsnapshot/local.conf
+
+This will run the script every 5 minutes. The script is smart
+enough to exit silently when other instance of rsnapshot for
+the same config file is running and when the drive is not
 connected.
 
 Notes
@@ -33,14 +46,5 @@ connecting the backup drive; no noise will be made in the
 cron emails when the srcipt does not find the backup drive
 connected.
 
-
-
-Run via cron
-------------
-
-Copy the script to an appropriate place and add a line
-simillar to this to your crontab for automatic running:
-
-    */5 *   *   *  *    /home/eddy/bin/occasional_rsnapshot /home/eddy/etc/rsnapshot/local.conf
 
 
