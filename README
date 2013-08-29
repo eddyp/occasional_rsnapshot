@@ -1,0 +1,8 @@
+Occasional rsnapshot
+
+This is a tool that allows automatic backups using rsnapshot when the external backup drive is connected.
+
+Although the ideal setup would be to have periodic backups on a system that is always online, this is not always possible.
+But when the connection is done, the backup should start fairly quickly and should respect the daily/weekly/... schedules of rsnapshot so that it accurately prepresents history.
+
+This is the motivation for this project.
