@@ -1,0 +1,77 @@
+#!/bin/bash
+
+lowestint=""
+# returns the intervals for which a backup must be made since
+# the date given as a list of parameters in the format YEAR WEEK DAY HOUR MINUTE
+intervals_since ()
+{
+	local y=$1
+	local w=$2
+	local d=$3
+	local h=$4
+	local m=$5
+
+	local nowts=$(date '+%Y-%W@%d %k:%M')
+	tstime=${nowts##* }
+	tsdate=${nowts% *}
+
+	local dy=${tsdate%%-*}
+	local dw=${tsdate#*-}
+	dw=${dw%%@*}
+	local dd=${tsdate##*@}
+	local dd=${tsdate##*@}
+	local dh=${tstime%:*}
+	local dm=${tstime#*:}
+
+	dy=$(( $dy - $y ))
+	dw=$(( $dw - $w ))
+	dd=$(( $dd - $d ))
+	dh=$(( $dh - $h ))
+
+	local intervals=""
+	case $lowestint in
+		hourly)
+			[ $dh -eq 0 ] || intervals="hourly $intervals"
+			;&
+		daily)
+			[ $dd -eq 0 ] || intervals="daily $intervals"
+			;&
+		weekly)
+			[ $dw -eq 0 ] || intervals="weekly $intervals"
+			;&
+		monthly)
+			[ $dw -lt 4 ] || intervals="monthly $intervals"
+			;&
+		yearly)
+			[ $dy -eq 0 ] || intervals="yearly $intervals"
+			;;
+	esac
+
+	echo $intervals
+}
+
+
+[ $# -ne 1 ] && echo "This script needs the rsnaphot confguration file as parameter." && exit 1
+
+CONF="$1"
+[ ! -f "$CONF" ] && echo "Configuration file '$CONF' not found." && exit 1 || true
+
+
+SROOT=$(grep '^\s*snapshot_root\s' "$CONF" | sed 's#snapshot_root\s\s*##')
+
+# if the backup destination does not exist, probably the disk is not mounted
+[ -d "$SROOT" ] || exit 0
+
+# we find out the most recent backup, so we can push the most recent one to the appropriate interval
+dirent=$(ls -ctlp --time-style '+%Y %W %d %k %M' "$SROOT" | grep '/' | head -n1 | cut -f 6- -d ' ')
+lowestint=${dirent##* }
+lowestint=${lowestint%.*}
+ts="${dirent% *}"
+
+set -e
+
+for i in $(intervals_since $ts) ; do
+	echo "Starting rsnapshot at interval $i..."
+	rsnaphot -c "$CONF" $i
+done
+
