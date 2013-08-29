@@ -1,5 +1,7 @@
 #!/bin/bash
 
+RSNAPSHOT=/usr/bin/rsnapshot
+
 lowestint=""
 # returns the intervals for which a backup must be made since
 # the date given as a list of parameters in the format YEAR WEEK DAY HOUR MINUTE
@@ -103,6 +105,6 @@ set -e
 
 for i in $(intervals_since $ts) ; do
 	echo "Starting rsnapshot at interval $i..."
-	rsnaphot -c "$CONF" $i
+	${RSNAPSHOT} -c "$CONF" $i
 done
 
