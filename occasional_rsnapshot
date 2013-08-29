@@ -51,7 +51,33 @@ intervals_since ()
 }
 
 
-[ $# -ne 1 ] && echo "This script needs the rsnaphot confguration file as parameter." && exit 1
+if [ $# -ne 1 ]; then
+	cat <<EOHELP
+This utility needs the rsnaphot confguration file as parameter.
+
+Usage:
+
+    $0 /path/to/rsnapshot.conf
+
+  The script tries to find the snapshot_root based on the
+  information in the configuration file, then, if found, it
+  starts the appropriate backups that are detected as
+  necessary since the last time the backup was made.
+
+  If the script does not find the snapshot_root, it will
+  terminate silently, since it assumes the drive is not
+  connected.
+
+  Because the script is silent by default when no drive is
+  found, it makes it appropriate for placing in cron with a
+  very high frequency as a means of triggering backups just by
+  connecting the backup drive; no noise will be made in the
+  cron emails when the srcipt does not find the backup drive
+  connected.
+
+EOHELP
+	exit 1
+fi
 
 CONF="$1"
 [ ! -f "$CONF" ] && echo "Configuration file '$CONF' not found." && exit 1 || true
