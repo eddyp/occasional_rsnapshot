@@ -84,9 +84,14 @@ CONF="$1"
 
 
 SROOT=$(grep '^\s*snapshot_root\s' "$CONF" | sed 's#snapshot_root\s\s*##')
-
 # if the backup destination does not exist, probably the disk is not mounted
 [ -d "$SROOT" ] || exit 0
+
+# we assume that if the lockfile is present, another rsnapshot
+# is ongoing, so we  just exit silently not to cause noise in
+# the cron mails
+LOCKF=$(grep '^\s*lockfile\s' "$CONF" | sed 's#lockfile\s\s*##')
+[ -f "$LOCKF" ] && exit 0
 
 # we find out the most recent backup, so we can push the most recent one to the appropriate interval
 dirent=$(ls -ctlp --time-style '+%Y %W %d %k %M' "$SROOT" | grep '/' | head -n1 | cut -f 6- -d ' ')
