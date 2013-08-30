@@ -2,6 +2,17 @@
 
 RSNAPSHOT=/usr/bin/rsnapshot
 
+
+# Parameters:
+#   $1 = interval
+# Uses:
+#   $CONF
+# test if the configuration requires the given type of interval
+config_has_interval()
+{
+	grep -q "^\s*retain\s\s*$interval" "$CONF"
+}
+
 # Parameters:
 #   $1 = interval
 # Uses:
@@ -13,7 +24,7 @@ needs_interval()
 	interval=$1
 
 	# test if the configuration requires the given type of interval
-	grep -q "^\s*retain\s\s*$interval" "$CONF" || return
+	config_has_interval "$interval" || return
 
 	declare -A tsfmt
 	tsfmt[yearly]='+%Y'
@@ -36,9 +47,16 @@ get_required_intervals ()
 {
 	possible_intervals="yearly monthly weekly daily hourly"
 	local intervals
+	local longest_needed=""
 
 	for i in $possible_intervals ; do
-		intervals="$intervals $(needs_interval $i)"
+		if [ "$longest_needed" ]; then
+			config_has_interval $i && needs_it="$i"
+		else
+			needs_it=$(needs_interval $i)
+		fi
+		intervals="$intervals $needs_it"
+		[ "$longest_needed" ] || longest_needed="$needs_it"
 	done
 
 	echo $intervals
