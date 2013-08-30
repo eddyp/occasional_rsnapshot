@@ -34,7 +34,7 @@ needs_interval()
 	tsfmt[daily]='+%d'
 	tsfmt[hourly]='+%k'
 
-	fileint=$(ls -ctlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | cut -f 6 -d ' ')
+	fileint=$(ls -ctlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | tr -s ' ' | cut -f 6 -d ' ')
 	nowint=$( date "${tsfmt[$interval]}" )
 
 	dif=$(( $nowint - $fileint ))
