@@ -10,7 +10,8 @@ RSNAPSHOT=${RSNAPSHOT:=/usr/bin/rsnapshot}
 # test if the configuration requires the given type of interval
 config_has_interval()
 {
-	grep -q "^\s*retain\s\s*$interval" "$CONF"
+
+	grep -q "^\s*retain\s\s*$1" "$CONF"
 }
 
 # Parameters:
