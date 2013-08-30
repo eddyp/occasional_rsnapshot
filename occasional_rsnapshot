@@ -2,52 +2,44 @@
 
 RSNAPSHOT=/usr/bin/rsnapshot
 
-lowestint=""
-# returns the intervals for which a backup must be made since
-# the date given as a list of parameters in the format YEAR WEEK DAY HOUR MINUTE
-intervals_since ()
+# Parameters:
+#   $1 = interval
+# Uses:
+#   $SROOT
+# returns the interval name if a backup for the given interval is necessary
+needs_interval()
 {
-	local y=$1
-	local w=$2
-	local d=$3
-	local h=$4
-	local m=$5
 
-	local nowts=$(date '+%Y-%W@%d %k:%M')
-	tstime=${nowts##* }
-	tsdate=${nowts% *}
+	interval=$1
 
-	local dy=${tsdate%%-*}
-	local dw=${tsdate#*-}
-	dw=${dw%%@*}
-	local dd=${tsdate##*@}
-	local dd=${tsdate##*@}
-	local dh=${tstime%:*}
-	local dm=${tstime#*:}
+	# test if the configuration requires the given type of interval
+	grep -q "^\s*retain\s\s*$interval" "$CONF" || return
 
-	dy=$(( $dy - $y ))
-	dw=$(( $dw - $w ))
-	dd=$(( $dd - $d ))
-	dh=$(( $dh - $h ))
+	declare -A tsfmt
+	tsfmt[yearly]='+%Y'
+	tsfmt[monthly]='+%-m'
+	tsfmt[weekly]='+%W'
+	tsfmt[daily]='+%d'
+	tsfmt[hourly]='+%k'
 
-	local intervals=""
-	case $lowestint in
-		hourly)
-			[ $dh -eq 0 ] || intervals="hourly $intervals"
-			;&
-		daily)
-			[ $dd -eq 0 ] || intervals="daily $intervals"
-			;&
-		weekly)
-			[ $dw -eq 0 ] || intervals="weekly $intervals"
-			;&
-		monthly)
-			[ $dw -lt 4 ] || intervals="monthly $intervals"
-			;&
-		yearly)
-			[ $dy -eq 0 ] || intervals="yearly $intervals"
-			;;
-	esac
+	fileint=$(ls -ctlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | cut -f 6 -d ' ')
+	nowint=$( date "${tsfmt[$interval]}" )
+
+	dif=$(( $nowint - $fileint ))
+
+	[ $dif -eq 0 ] || echo "$interval"
+}
+
+# returns the intervals for which a backup must be made
+# based on the configuration and the already existing backups
+get_required_intervals ()
+{
+	possible_intervals="yearly monthly weekly daily hourly"
+	local intervals
+
+	for i in $possible_intervals ; do
+		intervals="$intervals $(needs_interval $i)"
+	done
 
 	echo $intervals
 }
@@ -95,15 +87,10 @@ SROOT=$(grep '^\s*snapshot_root\s' "$CONF" | sed 's#snapshot_root\s\s*##')
 LOCKF=$(grep '^\s*lockfile\s' "$CONF" | sed 's#lockfile\s\s*##')
 [ -f "$LOCKF" ] && exit 0
 
-# we find out the most recent backup, so we can push the most recent one to the appropriate interval
-dirent=$(ls -ctlp --time-style '+%Y %W %d %k %M' "$SROOT" | grep '/' | head -n1 | cut -f 6- -d ' ')
-lowestint=${dirent##* }
-lowestint=${lowestint%.*}
-ts="${dirent% *}"
 
 set -e
 
-for i in $(intervals_since $ts) ; do
+for i in $(get_required_intervals) ; do
 	echo "Starting rsnapshot at interval $i..."
 	${RSNAPSHOT} -c "$CONF" $i
 done
