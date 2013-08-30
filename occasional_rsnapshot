@@ -3,6 +3,13 @@
 RSNAPSHOT=${RSNAPSHOT:=/usr/bin/rsnapshot}
 
 
+declare -A tsfmt
+tsfmt[yearly]='+%Y'
+tsfmt[monthly]='+%-m'
+tsfmt[weekly]='+%W'
+tsfmt[daily]='+%d'
+tsfmt[hourly]='+%k'
+
 # Parameters:
 #   $1 = interval
 # Uses:
@@ -36,13 +43,6 @@ needs_interval()
 
 	# test if the configuration requires the given type of interval
 	config_has_interval "$interval" || return
-
-	declare -A tsfmt
-	tsfmt[yearly]='+%Y'
-	tsfmt[monthly]='+%-m'
-	tsfmt[weekly]='+%W'
-	tsfmt[daily]='+%d'
-	tsfmt[hourly]='+%k'
 
 	fileint=$(ls -ctlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | tr -s ' ' | cut -f 6 -d ' ')
 	nowint=$( date "${tsfmt[$interval]}" )
