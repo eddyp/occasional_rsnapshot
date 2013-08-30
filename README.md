@@ -48,6 +48,6 @@ Because the script is silent by default when no drive is
 found, it makes it appropriate for placing in cron with a
 very high frequency as a means of triggering backups by just
 connecting the backup drive; no noise will be made in the
-cron emails when the sricpt does not find the backup drive
+cron emails when the script does not find the backup drive
 connected.
 
