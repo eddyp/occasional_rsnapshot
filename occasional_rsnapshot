@@ -17,6 +17,16 @@ config_has_interval()
 # Parameters:
 #   $1 = interval
 # Uses:
+#   $CONF
+# returns the number of backups for the given type of interval
+retain_count()
+{
+	grep "^\s*retain\s\s*$1" "$CONF" | sed "s#^.*$1\s*\([0-9]*\)#\1#"
+}
+
+# Parameters:
+#   $1 = interval
+# Uses:
 #   $SROOT
 # returns the interval name if a backup for the given interval is necessary
 needs_interval()
@@ -37,9 +47,10 @@ needs_interval()
 	fileint=$(ls -ctlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | tr -s ' ' | cut -f 6 -d ' ')
 	nowint=$( date "${tsfmt[$interval]}" )
 
+	[ $interval = 'hourly' ] && multiplier=$(( 24 / $(retain_count $interval) )) || multiplier=1
 	dif=$(( $nowint - $fileint ))
 
-	[ $dif -eq 0 ] || echo "$interval"
+	[ $dif -lt $multiplier ] || echo "$interval"
 }
 
 # returns the intervals for which a backup must be made
