@@ -121,7 +121,10 @@ LOCKF=$(grep '^\s*lockfile\s' "$CONF" | sed 's#lockfile\s\s*##')
 set -e
 
 for i in $(get_required_intervals) ; do
-	echo "Starting rsnapshot at interval $i..."
+	# sadly 'echo -n' is not portable, but I am too lazy to fix this
+	# just for some pretty printing in the cron email.
+	echo -n "Starting rsnapshot at interval $i... "
 	${RSNAPSHOT} -c "$CONF" $i
+	echo 'done.'
 done
 
