@@ -36,10 +36,18 @@ simillar to this to your crontab for automatic running:
 
     */5 *   *   *  *    /home/eddy/bin/occasional_rsnapshot /home/eddy/etc/rsnapshot/local.conf
 
-This will run the script every 5 minutes. The script is smart
-enough to exit silently when other instance of rsnapshot for
-the same config file is running and when the drive is not
-connected.
+This will run the script every 5 minutes.
+
+The script is smart enough to exit silently when appropriate:
+ * when other instance of rsnapshot for the same config file
+   is running
+ * when the drive is not connected
+ * when the time passed since the last backup is not above
+   the minimum interval set by the rsnapshot configuration
+   file
+
+This means that the script does the right thing at all times,
+even if called repeatedly.
 
 Notes
 -----
