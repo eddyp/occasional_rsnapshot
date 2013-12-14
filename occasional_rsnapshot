@@ -45,12 +45,16 @@ needs_interval()
 	config_has_interval "$interval" || return
 
 	fileint=$(ls -ctlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | tr -s ' ' | cut -f 6 -d ' ')
-	nowint=$( date "${tsfmt[$interval]}" )
+	if [ -z "$fileint" ] ;then
+		echo "$interval"
+		return
+	else
+		nowint=$( date "${tsfmt[$interval]}" )
+		dif=$(( $nowint - $fileint ))
 
-	[ $interval = 'hourly' ] && multiplier=$(( 24 / $(retain_count $interval) )) || multiplier=1
-	[ "$fileint" ] && dif=$(( $nowint - $fileint )) || dif=$(( $multiplier + 1 ))
-
-	[ $dif -lt $multiplier ] || echo "$interval"
+		[ $interval = 'hourly' ] && multiplier=$(( 24 / $(retain_count $interval) )) || multiplier=1
+		[ $dif -lt $multiplier ] || echo "$interval"
+	fi
 }
 
 # returns the intervals for which a backup must be made
