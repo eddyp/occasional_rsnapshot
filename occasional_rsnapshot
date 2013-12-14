@@ -48,7 +48,7 @@ needs_interval()
 	nowint=$( date "${tsfmt[$interval]}" )
 
 	[ $interval = 'hourly' ] && multiplier=$(( 24 / $(retain_count $interval) )) || multiplier=1
-	dif=$(( $nowint - $fileint ))
+	[ "$fileint" ] && dif=$(( $nowint - $fileint )) || dif=$(( $multiplier + 1 ))
 
 	[ $dif -lt $multiplier ] || echo "$interval"
 }
