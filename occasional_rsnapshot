@@ -44,7 +44,7 @@ needs_interval()
 	# test if the configuration requires the given type of interval
 	config_has_interval "$interval" || return
 
-	fileint=$(ls -ctlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | tr -s ' ' | cut -f 6 -d ' ')
+	fileint=$(ls -utlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | tr -s ' ' | cut -f 6 -d ' ')
 	if [ -z "$fileint" ] ;then
 		echo "$interval"
 		return
