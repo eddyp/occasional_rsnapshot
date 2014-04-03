@@ -10,6 +10,13 @@ tsfmt[weekly]='+%W'
 tsfmt[daily]='+%d'
 tsfmt[hourly]='+%k'
 
+declare -A nextint
+nextint[yearly]=''
+nextint[monthly]='yearly'
+nextint[weekly]='monthly'
+nextint[daily]='weekly'
+nextint[hourly]='daily'
+
 # Parameters:
 #   $1 = interval
 # Uses:
@@ -34,27 +41,92 @@ retain_count()
 # Parameters:
 #   $1 = interval
 # Uses:
+#   $ROOT
+#   $tsfmt
+# Returns:
+#   the list of time stamps of the existing backups for the given
+#   interval or empty string, if no backup exists
+get_file_timestamps()
+{
+	local interval=$1
+	local timestamps
+
+	[ "$interval" ] || return
+
+	timestamps="$(ls -utlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | tr -s ' ' | cut -f 6 -d ' ' | tr '\n' ' ')"
+	# remove the trailing space
+	timestamps="${timestamps% }"
+
+	echo "$timestamps"
+}
+
+# Parameters:
+#   $1 = interval
+# Uses:
 #   $SROOT
 # returns the interval name if a backup for the given interval is necessary
+#         if there is a backup gap relative to the next existing longer
+#         interval, then it will print it repeatedly so the gap is closed.
+#
+#         example 1:
+#           3 daily and 5 weekly intervals are configured;
+#           there is no weekly backup on disk
+#           result is: daily
+#           effect: at the end daily.0 has the latest backup for dailies
+#
+#         example 2:
+#           3 daily and 5 weekly intervals are configured;
+#           there is a weekly.0 backup and only a daily.0 on disk
+#           result is: daily daily
+#           effect: at the end daily.0, daily.1 and daily.2 exist
 needs_interval()
 {
-
-	interval=$1
-
 	# test if the configuration requires the given type of interval
-	config_has_interval "$interval" || return
+	config_has_interval "$1" || return
 
-	fileint=$(ls -utlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | tr -s ' ' | cut -f 6 -d ' ')
-	if [ -z "$fileint" ] ;then
-		echo "$interval"
-		return
-	else
+	local interval=$1
+	local repeats=0
+	local retained=0
+	local wantoretain="$(retain_count) $interval"
+	local target=0
+	local min_passed=1
+
+	# hourly is not ran once/hour, unlike other intervals
+	# we want to check if the minimum number of hours has passed, if we evaluate hourly
+	[ "$interval" != "hourly" ] || min_passed=$(( 24 / ${wantoretain} ))
+
+
+	timestamps="$(get_file_timestamps $interval)"
+	# XXX: don't invoke subshell
+	retained="$(echo $timestamps | wc -w)"
+
+	# If there is a backup for the next interval, we want fill up the current interval.
+	# Otherwise, a single backup is perfectly fine
+	[ "$( get_file_timestamps ${nextint[$interval]} )" ] && target="$wantoretain" || target=1
+	# We check if there is a gap between the targeted number of backups
+	# and the actual situation on disk.
+	# If there is, we adjust the repeats accordingly.
+	# If there is no gap, we should backup once or not all (decided later).
+	repeats=$(( $target - $retained ))
+	[ "$repeats" -ge 1 ] || repeats=1
+
+	if [ $retained -gt 0 ] ; then
 		nowint=$( date "${tsfmt[$interval]}" )
+		fileint="${timestamps%% *}"
 		dif=$(( $nowint - $fileint ))
 
-		[ $interval = 'hourly' ] && multiplier=$(( 24 / $(retain_count $interval) )) || multiplier=1
-		[ $dif -lt $multiplier ] || echo "$interval"
+
+		# has the interval passed?
+		[ $dif -lt $min_passed ] && repeats=0 || true
 	fi
+
+
+	# give the response
+	answer=''
+	for i in $(seq $repeats) ; do
+		answer="$answer $interval"
+	done
+	echo ${answer# }
 }
 
 # returns the intervals for which a backup must be made
