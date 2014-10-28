@@ -121,6 +121,32 @@ SROOT=$(grep '^\s*snapshot_root\s' "$CONF" | sed 's#snapshot_root\s\s*##')
 LOCKF=$(grep '^\s*lockfile\s' "$CONF" | sed 's#lockfile\s\s*##')
 [ -f "$LOCKF" ] && exit 0
 
+# Avoid the situation where two consecutive executions via cron
+# synchronize in such a way that the later spawned occasional_rsnapshot
+# inserts itself right between a larger interval and the lower next one
+# from the first's execution.
+# This can happen when using delayed removal of the oldest snapshot
+# because the rsnapshot pid is removed at this point, but the
+# occasional_rsnapshot script hasn't finished at this point.
+# We avoid this situation by making our own lockfile.
+OCCLOCKF=$(grep '^\s*lockfile\s' "$CONF" | sed -e 's#lockfile\s\s*##' -e 's#\(.pid\)*\s*$#.occasional.pid#')
+if [ -f "$OCCLOCKF" ]; then
+	OCCPID=$(cat $OCCLOCKF)
+	# check if the previous instance is alive
+	if [ "$OCCPID" ] && ps -p $OCCPID -o comm= >/dev/null ; then
+		exit 0
+	fi
+	[ "$OCCPID" ] && echo "Found stale occasional_rsnapshot PID file $OCCLOCKF." || true
+fi
+echo $$ | tr -d '\n' > $OCCLOCKF
+# make sure we did aquire the lock
+for wait in $(seq 3); do
+	sleep $wait
+	# did we aquire lock?
+	grep -q $$ $OCCLOCKF || exit 0
+done
+trap "[ -f "$OCCLOCKF" ] && grep -q $$ $OCCLOCKF 2>&1 >/dev/null && rm -f $OCCLOCKF" TERM INT EXIT
+
 
 set -e
 
