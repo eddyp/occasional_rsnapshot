@@ -3,12 +3,12 @@
 RSNAPSHOT=${RSNAPSHOT:=/usr/bin/rsnapshot}
 
 
-declare -A tsfmt
-tsfmt[yearly]='+%Y'
-tsfmt[monthly]='+%-m'
-tsfmt[weekly]='+%W'
-tsfmt[daily]='+%d'
-tsfmt[hourly]='+%k'
+declare -A min_int
+min_int[yearly]=31536000 # 3600 * 24 * 365
+min_int[monthly]=2592000 #3600 * 24 * 30
+min_int[weekly]=604800 # 3600 * 24 * 7
+min_int[daily]=86400 # 3600 * 24
+min_int[hourly]=3600
 
 declare -A nextint
 nextint[yearly]=''
@@ -16,6 +16,16 @@ nextint[monthly]='yearly'
 nextint[weekly]='monthly'
 nextint[daily]='weekly'
 nextint[hourly]='daily'
+
+declare -A leints
+leints[yearly]='yearly monthly weekly daily hourly'
+leints[monthly]='monthly weekly daily hourly'
+leints[weekly]='weekly daily hourly hourly'
+leints[daily]='daily hourly'
+leints[hourly]='hourly'
+
+possible_intervals="yearly monthly weekly daily hourly"
+
 
 # Parameters:
 #   $1 = interval
@@ -42,7 +52,6 @@ retain_count()
 #   $1 = interval
 # Uses:
 #   $ROOT
-#   $tsfmt
 # Returns:
 #   the list of time stamps of the existing backups for the given
 #   interval or empty string, if no backup exists
@@ -53,7 +62,7 @@ get_file_timestamps()
 
 	[ "$interval" ] || return
 
-	timestamps="$(ls -utlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | tr -s ' ' | cut -f 6 -d ' ' | tr '\n' ' ')"
+	timestamps="$(ls -utlp --time-style +%s "$SROOT" | grep "${interval}\.[0-9]*/" | tr -s ' ' | cut -f 6 -d ' ' | tr '\n' ' ')"
 	# remove the trailing space
 	timestamps="${timestamps% }"
 
@@ -89,11 +98,11 @@ needs_interval()
 	local retained=0
 	local wantoretain="$(retain_count) $interval"
 	local target=0
-	local min_passed=1
+	local min_passed=${min_int[$interval]}
 
 	# hourly is not ran once/hour, unlike other intervals
 	# we want to check if the minimum number of hours has passed, if we evaluate hourly
-	[ "$interval" != "hourly" ] || min_passed=$(( 24 / ${wantoretain} ))
+	[ "$interval" != "hourly" ] || min_passed=$(( ${min_int[daily]} / ${wantoretain} ))
 
 
 	timestamps="$(get_file_timestamps $interval)"
@@ -111,7 +120,7 @@ needs_interval()
 	[ "$repeats" -ge 1 ] || repeats=1
 
 	if [ $retained -gt 0 ] ; then
-		nowint=$( date "${tsfmt[$interval]}" )
+		nowint=$( date "+%s" )
 		fileint="${timestamps%% *}"
 		dif=$(( $nowint - $fileint ))
 
@@ -129,22 +138,41 @@ needs_interval()
 	echo ${answer# }
 }
 
+# returns a list with all intervals equal or less than the given interval
+get_intervals_le_than()
+{
+	[ "$1" ] || return 2
+
+	local interval=$1
+
+	local i
+	local r=''
+	local on=no
+
+	for i in $possible_intervals ; do
+		if [ "$on" = "yes" ] || [ "$interval" = "$i" ] ; then
+			on=yes
+			r="$r $i"
+		fi
+	done
+
+	echo $r
+
+}
+
 # returns the intervals for which a backup must be made
 # based on the configuration and the already existing backups
 get_required_intervals ()
 {
-	possible_intervals="yearly monthly weekly daily hourly"
-	local intervals
+	local intervals=''
 	local longest_needed=""
 
 	for i in $possible_intervals ; do
-		if [ "$longest_needed" ]; then
-			config_has_interval $i && needs_it="$i"
-		else
-			needs_it=$(needs_interval $i)
+		if config_has_interval $i ; then
+			if interval_gap $i ; then
+				intervals="$intervals ${leints[$i]}"
+			fi
 		fi
-		intervals="$intervals $needs_it"
-		[ "$longest_needed" ] || longest_needed="$needs_it"
 	done
 
 	echo $intervals
