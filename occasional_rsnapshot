@@ -78,6 +78,11 @@ get_required_intervals ()
 	echo $intervals
 }
 
+debug()
+{
+	[ "$DEBUG_OCCASIONAL_RSNAPSHOT" ] || return
+	echo "DEBUG [$$]: $@" >&2
+}
 
 if [ $# -ne 1 ]; then
 	cat <<EOHELP
@@ -130,14 +135,16 @@ LOCKF=$(grep '^\s*lockfile\s' "$CONF" | sed 's#lockfile\s\s*##')
 # occasional_rsnapshot script hasn't finished at this point.
 # We avoid this situation by making our own lockfile.
 OCCLOCKF=$(grep '^\s*lockfile\s' "$CONF" | sed -e 's#lockfile\s\s*##' -e 's#\(.pid\)*\s*$#.occasional.pid#')
+debug "Race for the lock!"
 if [ -f "$OCCLOCKF" ]; then
 	OCCPID=$(cat $OCCLOCKF)
 	# check if the previous instance is alive
 	if [ "$OCCPID" ] && ps -p $OCCPID -o comm= >/dev/null ; then
 		exit 0
 	fi
-	[ "$OCCPID" ] && echo "Found stale occasional_rsnapshot PID file $OCCLOCKF." || true
+	[ "$OCCPID" ] && debug "Found stale occasional_rsnapshot PID file $OCCLOCKF." || true
 fi
+debug "Aquiring lock"
 echo $$ | tr -d '\n' > $OCCLOCKF
 # make sure we did aquire the lock
 for wait in $(seq 3); do
@@ -145,6 +152,7 @@ for wait in $(seq 3); do
 	# did we aquire lock?
 	grep -q $$ $OCCLOCKF || exit 0
 done
+debug "Got the lock!"
 trap "[ -f "$OCCLOCKF" ] && grep -q $$ $OCCLOCKF 2>&1 >/dev/null && rm -f $OCCLOCKF" TERM INT EXIT
 
 
