@@ -135,6 +135,8 @@ LOCKF=$(grep '^\s*lockfile\s' "$CONF" | sed 's#lockfile\s\s*##')
 # occasional_rsnapshot script hasn't finished at this point.
 # We avoid this situation by making our own lockfile.
 OCCLOCKF=$(grep '^\s*lockfile\s' "$CONF" | sed -e 's#lockfile\s\s*##' -e 's#\(.pid\)*\s*$#.occasional.pid#')
+OCCPIDD=$(dirname ${OCCLOCKF})
+[ -d "${OCCPIDD}" ] || mkdir -p "${OCCPIDD}"
 debug "Race for the lock!"
 if [ -f "$OCCLOCKF" ]; then
 	OCCPID=$(cat $OCCLOCKF)
