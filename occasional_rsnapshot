@@ -42,7 +42,7 @@ needs_interval()
 	interval=$1
 
 	# test if the configuration requires the given type of interval
-	config_has_interval "$interval" || return
+	config_has_interval "$interval" || return 1
 
 	fileint=$(ls -ctlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | tr -s ' ' | cut -f 6 -d ' ')
 	if [ -z "$fileint" ] ;then
@@ -67,7 +67,7 @@ get_required_intervals ()
 
 	for i in $possible_intervals ; do
 		if [ "$longest_needed" ]; then
-			config_has_interval $i && needs_it="$i"
+			config_has_interval $i && needs_it="$i" || needs_it=""
 		else
 			needs_it=$(needs_interval $i)
 		fi
