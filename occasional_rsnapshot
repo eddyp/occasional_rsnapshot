@@ -150,13 +150,19 @@ debug()
 	echo "DEBUG [$$]: $@" >&2
 }
 
+if [ "$1" = "--debug" ]; then
+	RSNAPSHOT=echo
+	DEBUG_OCCASIONAL_RSNAPSHOT=yes
+	shift
+fi
+
 if [ $# -ne 1 ]; then
 	cat <<EOHELP
 This utility needs the rsnaphot confguration file as parameter.
 
 Usage:
 
-    $0 /path/to/rsnapshot.conf
+    $0 [--debug] /path/to/rsnapshot.conf
 
   The script tries to find the snapshot_root based on the
   information in the configuration file, then, if found, it
