@@ -112,11 +112,15 @@ needs_interval()
 	config_has_interval "$interval" || return 1
 
 	fileint=$(ls -ctlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | tr -s ' ' | cut -f 6 -d ' ')
+	debug "File $interval time stamp is '$fileint'"
 	if [ -z "$fileint" ] ;then
+		debug "No backup for '$interval' interval, considering backup for it (later checks might cancel this)."
 		result="$interval"
 	else
 		nowint=$( date "${tsfmt[$interval]}" )
 		dif=$(( $nowint - $fileint ))
+
+		debug "Earliest backup is '$dif' $interval backups away from today."
 
 		[ $interval = 'hourly' ] && multiplier=$(( 24 / $(retain_count $interval) )) || multiplier=1
 		[ $dif -lt $multiplier ] || result="$interval"
