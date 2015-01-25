@@ -49,6 +49,7 @@ shortest_interval ()
 	for i in $possible_intervals ; do
 		config_has_interval $i && ret=$i || true
 	done
+	debug "Shortest interval in configuration is '$ret'."
 
 	echo "$ret"
 }
