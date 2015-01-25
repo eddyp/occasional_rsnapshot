@@ -10,6 +10,16 @@ tsfmt[weekly]='+%W'
 tsfmt[daily]='+%d'
 tsfmt[hourly]='+%k'
 
+declare -A prevint
+prevint[yearly]='monthly'
+prevint[monthly]='weekly'
+prevint[weekly]='daily'
+prevint[daily]='hourly'
+prevint[hourly]=''
+
+possible_intervals="yearly monthly weekly daily hourly"
+
+
 # Parameters:
 #   $1 = interval
 # Uses:
@@ -17,7 +27,7 @@ tsfmt[hourly]='+%k'
 # test if the configuration requires the given type of interval
 config_has_interval()
 {
-
+	[ "$1" ] || return 1
 	grep -q "^\s*retain\s\s*$1" "$CONF"
 }
 
@@ -31,6 +41,61 @@ retain_count()
 	grep "^\s*retain\s\s*$1" "$CONF" | sed "s#^.*$1\s*\([0-9]*\)#\1#"
 }
 
+# Parameters: NONE
+# returns the shortest interval which backup was configured for
+shortest_interval ()
+{
+	ret=''
+	for i in $possible_intervals ; do
+		config_has_interval $i && ret=$i || true
+	done
+
+	echo "$ret"
+}
+
+# Parameters:
+#  $1 = interval
+# Uses:
+#  $SROOT
+# returns true if
+#  1) given interval is the shortest one
+#  2) the smaller interval preceding the given interval contains the
+#     oldest possible instance of the backup for it
+#     examples:
+#      - can backup 'weekly' if 'daily.6' exists
+#      - can backup 'yearly' if 'monthly.11' exists
+can_backup_interval ()
+{
+	interval=$1
+
+	[ "$(shortest_interval)" != "$interval" ] || return 0
+	debug "Interval $interval is not the shortest one."
+
+	pint=${prevint[$interval]}
+	debug "Next smaller interval near interval='$interval' is '$pint'."
+
+	prev_retain_count="$(retain_count ${pint})"
+	# TODO: if no previous interval is configured, something's fishy;
+	#       maybe making a backup is a better idea
+	if [ -z "$prev_retain_count" ] ; then
+		debug "Something's fishy: $interval is not the shortest, but ${prevint[$interval]} has no retain value. Maybe the configuration is incorrect?"
+		return 1
+	fi
+	debug "Retain count for '$pint' is '$prev_retain_count'."
+
+	must_exist_dir="${SROOT}${pint}.$(expr ${prev_retain_count} - 1)"
+	# if the maximum from the smaller interval exists, then we can
+	# backup this interval, otherwise, it makes no sense since we might
+	# lose info
+	if [ -d "${must_exist_dir}" ]; then
+		debug "Directory '$must_exist_dir' exists, so '$interval' can be backed up, too."
+		return
+	else
+		debug "Directory '$must_exist_dir' is NOT present, so trying to backup the '$interval' interval doesn't make sense."
+		return 1
+	fi
+}
+
 # Parameters:
 #   $1 = interval
 # Uses:
@@ -40,28 +105,29 @@ needs_interval()
 {
 
 	interval=$1
+	result=''
 
 	# test if the configuration requires the given type of interval
 	config_has_interval "$interval" || return 1
 
 	fileint=$(ls -ctlp --time-style ${tsfmt[$interval]} "$SROOT" | grep "${interval}\.[0-9]*/" | head -n1 | tr -s ' ' | cut -f 6 -d ' ')
 	if [ -z "$fileint" ] ;then
-		echo "$interval"
-		return
+		result="$interval"
 	else
 		nowint=$( date "${tsfmt[$interval]}" )
 		dif=$(( $nowint - $fileint ))
 
 		[ $interval = 'hourly' ] && multiplier=$(( 24 / $(retain_count $interval) )) || multiplier=1
-		[ $dif -lt $multiplier ] || echo "$interval"
+		[ $dif -lt $multiplier ] || result="$interval"
 	fi
+
+	can_backup_interval "$interval" && echo "$result" || return
 }
 
 # returns the intervals for which a backup must be made
 # based on the configuration and the already existing backups
 get_required_intervals ()
 {
-	possible_intervals="yearly monthly weekly daily hourly"
 	local intervals
 	local longest_needed=""
 
