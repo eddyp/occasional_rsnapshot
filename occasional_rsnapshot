@@ -151,6 +151,13 @@ needs_interval()
 	retained="$(echo $timestamps | wc -w)"
 	debug "Currently retained $interval backups: $retained"
 
+	# TODO: Compare the minimum threshold for $interval against all snapshots in smaller
+	#       intervals. If any of the smaller intervals are older than the threshold for
+	#       current interval, then we should consider the current interval, too.
+	#
+	#       This could happen if there was manual intervention in the backups, maybe due
+	#       to older or broken verisions of occasional_rsnapshot.
+
 	if [ $retained -gt 0 ] ; then
 		nowint=$( date "+%s" )
 		fileint="${timestamps%% *}"
