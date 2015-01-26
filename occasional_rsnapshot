@@ -137,10 +137,8 @@ needs_interval()
 
 	result=''
 	local interval=$1
-	local repeats=0
 	local retained=0
 	local wantoretain="$(retain_count) $interval"
-	local target=0
 	local min_passed=${min_int[$interval]}
 
 	# hourly is not ran once/hour, unlike other intervals
