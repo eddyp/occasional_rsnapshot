@@ -91,7 +91,7 @@ can_backup_interval ()
 	fi
 	debug "Retain count for '$pint' is '$prev_retain_count'."
 
-	must_exist_dir="${SROOT}${pint}.$(expr ${prev_retain_count} - 1)"
+	must_exist_dir="${SROOT}${pint}.$(( ${prev_retain_count} - 1 ))"
 	# if the maximum from the smaller interval exists, then we can
 	# backup this interval, otherwise, it makes no sense since we might
 	# lose info
