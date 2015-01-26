@@ -80,7 +80,7 @@ can_backup_interval ()
 	debug "Interval $interval is not the shortest one."
 
 	pint=${prevint[$interval]}
-	debug "Next smaller interval near interval='$interval' is '$pint'."
+	debug "Next smaller interval than '$interval' is '$pint'."
 
 	prev_retain_count="$(retain_count ${pint})"
 	# TODO: if no previous interval is configured, something's fishy;
@@ -89,7 +89,7 @@ can_backup_interval ()
 		debug "Something's fishy: $interval is not the shortest, but ${prevint[$interval]} has no retain value. Maybe the configuration is incorrect?"
 		return 1
 	fi
-	debug "Retain count for '$pint' is '$prev_retain_count'."
+	debug "Configured retain count for '$pint' is '$prev_retain_count'."
 
 	must_exist_dir="${SROOT}${pint}.$(( ${prev_retain_count} - 1 ))"
 	# if the maximum from the smaller interval exists, then we can
@@ -151,14 +151,14 @@ needs_interval()
 	timestamps="$(get_file_timestamps $interval)"
 	# XXX: don't invoke subshell
 	retained="$(echo $timestamps | wc -w)"
-	debug "Retained $interval file time stamps: $retained"
+	debug "Currently retained $interval backups: $retained"
 
 	if [ $retained -gt 0 ] ; then
 		nowint=$( date "+%s" )
 		fileint="${timestamps%% *}"
 		dif=$(( $nowint - $fileint ))
 
-		debug "Earliest backup in '$interval' interval is ${dif}s away from now (Threshold is ${min_passed[$interval]}s)."
+		debug "Most recent backup in '$interval' interval is ${dif} s away from now (Threshold is ${min_passed[$interval]} s)."
 
 		# has the interval passed?
 		[ $dif -lt $min_passed ] || result="$interval"
@@ -192,7 +192,7 @@ debug()
 }
 
 if [ "$1" = "--debug" ]; then
-	RSNAPSHOT=echo
+	RSNAPSHOT="echo (dry run): $RSNAPSHOT"
 	DEBUG_OCCASIONAL_RSNAPSHOT=yes
 	shift
 fi
