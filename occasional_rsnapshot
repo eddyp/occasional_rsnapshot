@@ -17,12 +17,12 @@ nextint[weekly]='monthly'
 nextint[daily]='weekly'
 nextint[hourly]='daily'
 
-declare -A leints
-leints[yearly]='yearly monthly weekly daily hourly'
-leints[monthly]='monthly weekly daily hourly'
-leints[weekly]='weekly daily hourly hourly'
-leints[daily]='daily hourly'
-leints[hourly]='hourly'
+declare -A prevint
+prevint[yearly]='monthly'
+prevint[monthly]='weekly'
+prevint[weekly]='daily'
+prevint[daily]='hourly'
+prevint[hourly]=''
 
 possible_intervals="yearly monthly weekly daily hourly"
 
@@ -34,7 +34,7 @@ possible_intervals="yearly monthly weekly daily hourly"
 # test if the configuration requires the given type of interval
 config_has_interval()
 {
-
+	[ "$1" ] || return 1
 	grep -q "^\s*retain\s\s*$1" "$CONF"
 }
 
@@ -46,6 +46,62 @@ config_has_interval()
 retain_count()
 {
 	grep "^\s*retain\s\s*$1" "$CONF" | sed "s#^.*$1\s*\([0-9]*\)#\1#"
+}
+
+# Parameters: NONE
+# returns the shortest interval which backup was configured for
+shortest_interval ()
+{
+	ret=''
+	for i in $possible_intervals ; do
+		config_has_interval $i && ret=$i || true
+	done
+	debug "Shortest interval in configuration is '$ret'."
+
+	echo "$ret"
+}
+
+# Parameters:
+#  $1 = interval
+# Uses:
+#  $SROOT
+# returns true if
+#  1) given interval is the shortest one
+#  2) the smaller interval preceding the given interval contains the
+#     oldest possible instance of the backup for it
+#     examples:
+#      - can backup 'weekly' if 'daily.6' exists
+#      - can backup 'yearly' if 'monthly.11' exists
+can_backup_interval ()
+{
+	interval=$1
+
+	[ "$(shortest_interval)" != "$interval" ] || return 0
+	debug "Interval $interval is not the shortest one."
+
+	pint=${prevint[$interval]}
+	debug "Next smaller interval near interval='$interval' is '$pint'."
+
+	prev_retain_count="$(retain_count ${pint})"
+	# TODO: if no previous interval is configured, something's fishy;
+	#       maybe making a backup is a better idea
+	if [ -z "$prev_retain_count" ] ; then
+		debug "Something's fishy: $interval is not the shortest, but ${prevint[$interval]} has no retain value. Maybe the configuration is incorrect?"
+		return 1
+	fi
+	debug "Retain count for '$pint' is '$prev_retain_count'."
+
+	must_exist_dir="${SROOT}${pint}.$(expr ${prev_retain_count} - 1)"
+	# if the maximum from the smaller interval exists, then we can
+	# backup this interval, otherwise, it makes no sense since we might
+	# lose info
+	if [ -d "${must_exist_dir}" ]; then
+		debug "Directory '$must_exist_dir' exists, so '$interval' can be backed up, too."
+		return
+	else
+		debug "Directory '$must_exist_dir' is NOT present, so trying to backup the '$interval' interval doesn't make sense."
+		return 1
+	fi
 }
 
 # Parameters:
@@ -74,25 +130,12 @@ get_file_timestamps()
 # Uses:
 #   $SROOT
 # returns the interval name if a backup for the given interval is necessary
-#         if there is a backup gap relative to the next existing longer
-#         interval, then it will print it repeatedly so the gap is closed.
-#
-#         example 1:
-#           3 daily and 5 weekly intervals are configured;
-#           there is no weekly backup on disk
-#           result is: daily
-#           effect: at the end daily.0 has the latest backup for dailies
-#
-#         example 2:
-#           3 daily and 5 weekly intervals are configured;
-#           there is a weekly.0 backup and only a daily.0 on disk
-#           result is: daily daily
-#           effect: at the end daily.0, daily.1 and daily.2 exist
 needs_interval()
 {
 	# test if the configuration requires the given type of interval
 	config_has_interval "$1" || return
 
+	result=''
 	local interval=$1
 	local repeats=0
 	local retained=0
@@ -108,56 +151,21 @@ needs_interval()
 	timestamps="$(get_file_timestamps $interval)"
 	# XXX: don't invoke subshell
 	retained="$(echo $timestamps | wc -w)"
-
-	# If there is a backup for the next interval, we want fill up the current interval.
-	# Otherwise, a single backup is perfectly fine
-	[ "$( get_file_timestamps ${nextint[$interval]} )" ] && target="$wantoretain" || target=1
-	# We check if there is a gap between the targeted number of backups
-	# and the actual situation on disk.
-	# If there is, we adjust the repeats accordingly.
-	# If there is no gap, we should backup once or not all (decided later).
-	repeats=$(( $target - $retained ))
-	[ "$repeats" -ge 1 ] || repeats=1
+	debug "Retained $interval file time stamps: $retained"
 
 	if [ $retained -gt 0 ] ; then
 		nowint=$( date "+%s" )
 		fileint="${timestamps%% *}"
 		dif=$(( $nowint - $fileint ))
 
+		debug "Earliest backup in '$interval' interval is ${dif}s away from now (Threshold is ${min_passed[$interval]}s)."
 
 		# has the interval passed?
-		[ $dif -lt $min_passed ] && repeats=0 || true
+		[ $dif -lt $min_passed ] || result="$interval"
 	fi
 
-
-	# give the response
-	answer=''
-	for i in $(seq $repeats) ; do
-		answer="$answer $interval"
-	done
-	echo ${answer# }
-}
-
-# returns a list with all intervals equal or less than the given interval
-get_intervals_le_than()
-{
-	[ "$1" ] || return 2
-
-	local interval=$1
-
-	local i
-	local r=''
-	local on=no
-
-	for i in $possible_intervals ; do
-		if [ "$on" = "yes" ] || [ "$interval" = "$i" ] ; then
-			on=yes
-			r="$r $i"
-		fi
-	done
-
-	echo $r
-
+	[ "$result" ] && can_backup_interval "$interval" || return 1
+	debug "needs_interval concluded '$result' is necessary"
 }
 
 # returns the intervals for which a backup must be made
@@ -165,12 +173,11 @@ get_intervals_le_than()
 get_required_intervals ()
 {
 	local intervals=''
-	local longest_needed=""
 
 	for i in $possible_intervals ; do
 		if config_has_interval $i ; then
-			if interval_gap $i ; then
-				intervals="$intervals ${leints[$i]}"
+			if needs_interval $i ; then
+				intervals="$intervals $i"
 			fi
 		fi
 	done
@@ -184,13 +191,19 @@ debug()
 	echo "DEBUG [$$]: $@" >&2
 }
 
+if [ "$1" = "--debug" ]; then
+	RSNAPSHOT=echo
+	DEBUG_OCCASIONAL_RSNAPSHOT=yes
+	shift
+fi
+
 if [ $# -ne 1 ]; then
 	cat <<EOHELP
 This utility needs the rsnaphot confguration file as parameter.
 
 Usage:
 
-    $0 /path/to/rsnapshot.conf
+    $0 [--debug] /path/to/rsnapshot.conf
 
   The script tries to find the snapshot_root based on the
   information in the configuration file, then, if found, it
