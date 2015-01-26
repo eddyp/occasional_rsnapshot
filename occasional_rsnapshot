@@ -167,6 +167,12 @@ needs_interval()
 
 		# has the interval passed?
 		[ $dif -lt $min_passed ] || result="$interval"
+
+	elif [ $retained -eq 0 ] && [ "$interval" = "$(shortest_interval)" ]; then
+		debug "No backups for shortest interval $interval. Backup will be done."
+		result="$interval"  # not necessary, but here in case of future changes
+		return
+
 	fi
 
 	[ "$result" ] && can_backup_interval "$interval" || return 1
