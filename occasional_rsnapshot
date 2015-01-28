@@ -177,6 +177,7 @@ needs_interval()
 
 	[ "$result" ] && can_backup_interval "$interval" || return 1
 	debug "needs_interval concluded '$result' is necessary"
+	return 0
 }
 
 # returns the intervals for which a backup must be made
