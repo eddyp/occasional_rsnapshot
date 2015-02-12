@@ -100,7 +100,7 @@ can_backup_interval ()
 	# lose info
 	if [ -d "${must_exist_dir}" ]; then
 		debug "Directory '$must_exist_dir' exists, so '$interval' can be backed up, too."
-		return
+		return 0
 	else
 		debug "Directory '$must_exist_dir' is NOT present, so trying to backup the '$interval' interval doesn't make sense."
 		return 1
@@ -176,13 +176,17 @@ needs_interval()
 	elif [ $retained -eq 0 ] && [ "$interval" = "$SHORTEST" ]; then
 		debug "No backups for shortest interval $interval. Backup will be done."
 		result="$interval"  # not necessary, but here in case of future changes
-		return
+		return 0
 
 	fi
 
-	[ "$result" ] && can_backup_interval "$interval" || return 1
-	debug "needs_interval concluded '$result' is necessary"
-	return 0
+	if [ "$result" ] && can_backup_interval "$interval"; then
+		debug "needs_interval concluded '$interval' is necessary"
+		return 0
+	else
+		debug "needs_interval concluded '$interval' is NOT necessary"
+		return 1
+	fi
 }
 
 # returns the intervals for which a backup must be made
