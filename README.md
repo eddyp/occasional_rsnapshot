@@ -17,7 +17,7 @@ might help you to do easily do sparse backups, instead of none.
 Usage
 -----
 
-    occasional_rsnapshot /path/to/rsnapshot.conf
+    occasional_rsnapshot [--debug] /path/to/rsnapshot.conf
 
 The script tries to find `snapshot_root` based on the
 information in the configuration file, then, if found, it
@@ -58,6 +58,9 @@ very high frequency as a means of triggering backups by just
 connecting the backup drive; no noise will be made in the
 cron emails when the script does not find the backup drive
 connected.
+
+When passing '--debug' the script is verbose and does not
+invoke rsnapshot at all.
 
 Versions
 --------
