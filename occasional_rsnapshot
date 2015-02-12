@@ -26,6 +26,9 @@ prevint[hourly]=''
 
 possible_intervals="yearly monthly weekly daily hourly"
 
+# shortest configured interval - filled later
+SHORTEST=""
+
 
 # Parameters:
 #   $1 = interval
@@ -76,7 +79,7 @@ can_backup_interval ()
 {
 	interval=$1
 
-	[ "$(shortest_interval)" != "$interval" ] || return 0
+	[ "$SHORTEST" != "$interval" ] || return 0
 	debug "Interval $interval is not the shortest one."
 
 	pint=${prevint[$interval]}
@@ -141,6 +144,8 @@ needs_interval()
 	local wantoretain="$(retain_count $interval)"
 	local min_passed=${min_int[$interval]}
 
+	SHORTEST=$(shortest_interval)
+
 	# hourly is not ran once/hour, unlike other intervals
 	# we want to check if the minimum number of hours has passed, if we evaluate hourly
 	[ "$interval" != "hourly" ] || min_passed=$(( ${min_int[daily]} / ${wantoretain} ))
@@ -168,7 +173,7 @@ needs_interval()
 		# has the interval passed?
 		[ $dif -lt $min_passed ] || result="$interval"
 
-	elif [ $retained -eq 0 ] && [ "$interval" = "$(shortest_interval)" ]; then
+	elif [ $retained -eq 0 ] && [ "$interval" = "$SHORTEST" ]; then
 		debug "No backups for shortest interval $interval. Backup will be done."
 		result="$interval"  # not necessary, but here in case of future changes
 		return
