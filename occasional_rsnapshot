@@ -258,7 +258,7 @@ SROOT=$(grep '^\s*snapshot_root\s' "$CONF" | sed 's#snapshot_root\s\s*##')
 # is ongoing, so we  just exit silently not to cause noise in
 # the cron mails
 LOCKF=$(grep '^\s*lockfile\s' "$CONF" | sed 's#lockfile\s\s*##')
-[ -f "$LOCKF" ] && exit 0
+[ -f "$LOCKF" ] && ps -p $(cat "$LOCKF") -o comm= >/dev/null && exit 0
 
 # Avoid the situation where two consecutive executions via cron
 # synchronize in such a way that the later spawned occasional_rsnapshot
