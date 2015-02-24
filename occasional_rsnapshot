@@ -80,7 +80,7 @@ can_backup_interval ()
 	interval=$1
 
 	[ "$SHORTEST" != "$interval" ] || return 0
-	debug "Interval $interval is not the shortest one."
+	debug "Interval $interval is not the shortest one. Evaluating if backup is necessary."
 
 	pint=${prevint[$interval]}
 	debug "Next smaller interval than '$interval' is '$pint'."
@@ -173,10 +173,12 @@ needs_interval()
 		# has the interval passed?
 		[ $dif -lt $min_passed ] || result="$interval"
 
-	elif [ $retained -eq 0 ] && [ "$interval" = "$SHORTEST" ]; then
-		debug "No backups for shortest interval $interval. Backup will be done."
+	elif [ $retained -eq 0 ]; then
+		debug "No backups for interval $interval. We found a prospective backup interval."
 		result="$interval"  # not necessary, but here in case of future changes
-		return 0
+
+	else
+		debug "Internal error: unexpected value retained='$retained' for interval $interval."
 
 	fi
 
