@@ -2,7 +2,8 @@ Occasional rsnapshot
 ====================
 
 This is a tool that allows automatic backups using rsnapshot
-when the external backup drive is connected.
+when the external backup drive or remote backup media is
+connected.
 
 Although the ideal setup would be to have periodic backups on
 a system that is always online, this is not always possible.
@@ -10,23 +11,69 @@ But when the connection is done, the backup should start fairly
 quickly and should respect the daily/weekly/... schedules of
 rsnapshot so that it accurately represents history.
 
-So if you find yourself in a simillar situation, this script
-might help you to do easily do sparse backups, instead of none.
+In other words, if you backup to an external drive or to some
+network/internet connected storage that you don't expect to
+have always connected (which is is case with laptops) you can
+use `occasional_rsnapshot` to make sure your data is backed
+up when the backup storage is connected.
 
+`occasional_rsnapshot` is appropriate for:
+ * laptops backing up on:
+   * a NAS on the home LAN or
+   * a remote or an internet hosted storage location
+ * systems making backups online (storage mounted locally
+   somehow)
+ * systems doing backups on an external drive that is not
+   always connected to the system
+
+The only caveat is that all of these must be mounted in the
+local file system tree somehow by any arbitrary tool,
+`occasional_rsnapshot` or `rsnapshot` do not care, as long as
+the files are mounted.
+
+
+So if you find yourself in a simillar situation, this script
+might help you to easily do backups in spite of the occasional
+availability of the backup media, instead of no backups at all.
+You can even trigger backups semi-automatically when you
+remember to or decide is time to backup, by simply pulging in
+your USB backup HDD.
 
 Usage
 -----
 
-    occasional_rsnapshot [--debug] /path/to/rsnapshot.conf
+Install `rsnapshot` and make sure your rsnapshot configuration
+file contains the stanza below so no backup is tried when the
+backup media is not mounted:
 
-The script tries to find `snapshot_root` based on the
-information in the configuration file, then, if found, it
-starts the appropriate backups that are detected as
+    no_create_root	1
+
+''Note: `rsnapshot.conf` uses tabs as separators between the
+option and the value, so copying the line above from this file
+into your `rsnapshot.conf` might not yeld the expected
+results.''
+
+Then run `occasional_rsnapshot` with the 'rsnapshot.conf'
+file as parameter.
+
+    occasional_rsnapshot /path/to/rsnapshot.conf
+
+''Note: Optionally, if you want to check first what would be
+done, you can pass the `--debug` option and see what decisions
+`occasional_rsnapshot` would make and it will not call
+`rsnapshot`.''
+
+    occasional_rsnapshot --debug /path/to/rsnapshot.conf
+
+`occasional_rsnapshot` tries to find `snapshot_root` based on
+the information in the configuration file, then, if found, it
+analyzes its contents and, based on the options in the
+`rsnapshot.conf` file and the status of the `snapshot_root`,
+it starts the appropriate backups that are detected as
 necessary, for all the enabled intervals.
 
-If the script does not find `snapshot_root`, it will
-terminate silently, since it assumes the drive is not
-connected.
+If the script does not find `snapshot_root`, it will terminate
+silently, since it assumes the backup media is not connected.
 
 Run via cron
 ------------
