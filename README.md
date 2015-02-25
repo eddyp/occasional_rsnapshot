@@ -48,32 +48,33 @@ backup media is not mounted:
 
     no_create_root	1
 
-''Note: `rsnapshot.conf` uses tabs as separators between the
+_Note: `rsnapshot.conf` uses tabs as separators between the
 option and the value, so copying the line above from this file
 into your `rsnapshot.conf` might not yeld the expected
-results.''
+results._
 
 Then run `occasional_rsnapshot` with the 'rsnapshot.conf'
 file as parameter.
 
     occasional_rsnapshot /path/to/rsnapshot.conf
 
-''Note: Optionally, if you want to check first what would be
+_Note: Optionally, if you want to check first what would be
 done, you can pass the `--debug` option and see what decisions
-`occasional_rsnapshot` would make and it will not call
-`rsnapshot`.''
+`occasional_rsnapshot` would make. When using this option
+`rsnapshot` will not be called at all._
 
     occasional_rsnapshot --debug /path/to/rsnapshot.conf
 
 `occasional_rsnapshot` tries to find `snapshot_root` based on
 the information in the configuration file, then, if found, it
-analyzes its contents and, based on the options in the
+analyzes its contents and based on the options in the
 `rsnapshot.conf` file and the status of the `snapshot_root`,
-it starts the appropriate backups that are detected as
+it starts the appropriate backups which are detected as
 necessary, for all the enabled intervals.
 
-If the script does not find `snapshot_root`, it will terminate
-silently, since it assumes the backup media is not connected.
+If `occasional_rsnapshot` does not find `snapshot_root`
+directory, it will terminate silently, since it assumes the
+backup media is not mounted.
 
 Run via cron
 ------------
@@ -156,14 +157,14 @@ grabbed from: https://github.com/eddyp/filterfs
 Notes
 -----
 
-Because the script is silent by default when no drive is
+ 1. Because the script is silent by default when no drive is
 found, it makes it appropriate for placing in cron with a
 very high frequency as a means of triggering backups by just
-connecting the backup drive; no noise will be made in the
-cron emails when the script does not find the backup drive
-connected.
+connecting the backup drive or mounting the backup media; no
+noise will be made in the cron emails when the script does
+not find the backup drive connected.
 
-When passing '--debug' the script is verbose and does not
+ 1. When passing `--debug` the script is verbose and does not
 invoke rsnapshot at all.
 
 
