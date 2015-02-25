@@ -166,6 +166,16 @@ connected.
 When passing '--debug' the script is verbose and does not
 invoke rsnapshot at all.
 
+
+Development
+-----------
+
+Development of `occasional_rsnapshot` happens on github at:
+
+[https://github.com/eddyp/occasional\_rsnapshot](https://github.com/eddyp/occasional_rsnapshot)
+
+Patches and pull requestst are welcome.
+
 Versions
 --------
 This project uses [Semantic Versioning](http://semver.org/)
