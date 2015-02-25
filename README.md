@@ -96,6 +96,63 @@ The script is smart enough to exit silently when appropriate:
 This means that the script does the right thing at all times,
 even if called repeatedly.
 
+
+Encryption and advanced setups
+------------------------------
+
+Since `rsnapshot` uses `rsync` for the backup and `rsync` does
+not encrypt the files on the backup media, a way to implement
+encrypted backups is to encrypt the source files which
+`rsnapshot` backups.
+
+You can use `encfs --reverse` to transparently obtain an
+ecrypted version of your source filesystem. After that, change
+your `backup` stanzas in `rsnapshot.conf` to do backups of the
+encypted versions of your files instead of the originals.
+
+Since the original filenames will not be available/visible to
+`rsnapshot`, if you want to exclude specific files from the
+backup, you will have to filter those files by other means
+than the `exclude` `rsnapshot.conf` stanzas. This can be
+achieved by a filtering filesystem such as the `filterfs` FUSE
+filesystem (or, if you run GNU/Hurd, a filtering translator).
+
+
+In essence, when using encfs and filterfs, the resulting setup
+would be:
+
+          Occasional Rsnapshot
+                   |
+                  \|/
+               Rsnapshot
+                   |
+                  \|/
+    +-------------------------------+
+    |  Filtered and ecrypted files  |
+    |           (encfs)             |
+    +-------------------------------+
+                   |
+                  \|/
+    +-------------------------------+
+    |        Filtered files         |
+    |          (filterfs)           |
+    +-------------------------------+
+                   |
+                  \|/
+    +-------------------------------+
+    |        Original files         |
+    +-------------------------------+
+
+
+`encfs` is available in most distributions or can be
+downloaded from https://github.com/vgough/encfs .
+
+Unfortunately the `filterfs` fuse filesystem upstream doesn't
+seem to be active anymore, but since I used this for this
+exact setup, a more recent version with some fixes can be
+grabbed from: https://github.com/eddyp/filterfs
+
+
 Notes
 -----
 
