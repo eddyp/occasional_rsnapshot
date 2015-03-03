@@ -94,12 +94,35 @@ can_backup_interval ()
 	fi
 	debug "Configured retain count for '$pint' is '$prev_retain_count'."
 
-	must_exist_dir="${SROOT}${pint}.$(( ${prev_retain_count} - 1 ))"
+	pint_max_index=$(( ${prev_retain_count} - 1 ))
+	must_exist_dir="${SROOT}${pint}.$pint_max_index"
 	# if the maximum from the smaller interval exists, then we can
 	# backup this interval, otherwise, it makes no sense since we might
 	# lose info
 	if [ -d "${must_exist_dir}" ]; then
-		debug "Directory '$must_exist_dir' exists, so '$interval' can be backed up, too."
+		debug "Directory '$must_exist_dir' exists, so '$interval' could be backed up, too."
+		newest_snap_dir=${SROOT}${interval}.0
+		if [ -d "${newest_snap_dir}" ]; then
+			local ts_pint_dir="$(get_file_timestamps $pint $pint_max_index)"
+			if [ -z "$ts_pint_dir" ]; then
+				echo "Internal error: could not get timestamp of existing directory $must_exist_dir (oldest in $pint interval). Quitting."
+				exit 2
+			fi
+			local ts_int_dir="$(get_file_timestamps $interval 0)"
+			if [ -z "$ts_int_dir" ]; then
+				echo "Internal error: could not get timestamp of existing directory $newest_snap_dir (newest in $interval interval). Quitting."
+				exit 2
+			fi
+			tsdiff=$(( ${ts_pint_dir} - ${ts_int_dir} ))
+			if [ $tsdiff -ge ${min_int[$interval]} ]; then
+				debug "Oldest $pint snapshot is $tsdiff away from newest $interval snapshot and more than ${min_int[$interval]}s old. Will backup '$interval'."
+				return 0
+			else
+				debug "Not enough time passed since oldest $pint snapshot was done to justify a $interval backup. Skipping."
+				return 1
+			fi
+		fi
+		debug "No previous snapshot for interval '$interval', so backup will be done."
 		return 0
 	else
 		debug "Directory '$must_exist_dir' is NOT present, so trying to backup the '$interval' interval doesn't make sense."
