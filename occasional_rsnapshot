@@ -109,19 +109,24 @@ can_backup_interval ()
 
 # Parameters:
 #   $1 = interval
+#   $2 = optional interval directory index regex
 # Uses:
 #   $ROOT
 # Returns:
-#   the list of time stamps of the existing backups for the given
-#   interval or empty string, if no backup exists
+#   The list of time stamps of the existing backups for the given
+#   interval or empty string, if no backup exists.
+#   If the second parameter is given, it will return the timestamps
+#   for the snapshots in the interval whose index matches the regex
 get_file_timestamps()
 {
 	local interval=$1
 	local timestamps
+	local index_re
+	[ "$#" -eq 2 ] && index_re="$2" || index_re='[0-9][0-9]*'
 
 	[ "$interval" ] || return
 
-	timestamps="$(ls -utlp --time-style +%s "$SROOT" | grep "${interval}\.[0-9]*/" | tr -s ' ' | cut -f 6 -d ' ' | tr '\n' ' ')"
+	timestamps="$(ls -utlp --time-style +%s "$SROOT" | grep "${interval}\.${index_re}*/" | tr -s ' ' | cut -f 6 -d ' ' | tr '\n' ' ')"
 	# remove the trailing space
 	timestamps="${timestamps% }"
 
