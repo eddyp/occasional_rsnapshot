@@ -168,7 +168,7 @@ needs_interval()
 		fileint="${timestamps%% *}"
 		dif=$(( $nowint - $fileint ))
 
-		debug "Most recent backup in '$interval' interval is ${dif} seconds old. (Threshold is ${min_passed[$interval]} s)."
+		debug "Most recent backup in '$interval' interval is ${dif} seconds old. (Threshold is ${min_passed} s)."
 
 		# has the interval passed?
 		[ $dif -lt $min_passed ] || result="$interval"
