@@ -149,7 +149,7 @@ get_file_timestamps()
 
 	[ "$interval" ] || return
 
-	timestamps="$(ls -utlp --time-style +%s "$SROOT" | grep "${interval}\.${index_re}*/" | tr -s ' ' | cut -f 6 -d ' ' | tr '\n' ' ')"
+	timestamps="$(LANG=C stat -c "%n:%Y:%F" "$SROOT"${interval}.* | grep "${interval}\.${index_re}:[0-9]*:directory" | cut -f 2 -d ':' | tr '\n' ' ')"
 	# remove the trailing space
 	timestamps="${timestamps% }"
 
